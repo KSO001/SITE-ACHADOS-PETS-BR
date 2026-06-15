@@ -1,1 +1,64 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  ACHADOS PETS BR — GitHub Actions Scheduler                  ║
+# ║  Roda atualizar_ml.py todo dia às 9h e faz deploy do site   ║
+# ╚══════════════════════════════════════════════════════════════╝
+#
+# COMO CONFIGURAR:
+#   1. Suba seu site para um repositório no GitHub
+#   2. Crie a pasta: .github/workflows/
+#   3. Coloque este arquivo lá com o nome: atualizar_diario.yml
+#   4. Ative GitHub Pages no repositório (Settings > Pages > main branch)
+#   5. Pronto — vai rodar todo dia às 9h no horário de Brasília!
 
+name: Atualizar Produtos ML
+
+on:
+  schedule:
+    # Toda segunda a sexta às 9h horário de Brasília (12h UTC)
+    - cron: "0 12 * * 1-5"
+    # Sábado às 8h (11h UTC) — fim de semana também tem oferta!
+    - cron: "0 11 * * 6"
+
+  # Permite rodar manualmente pelo painel do GitHub
+  workflow_dispatch:
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Baixa o código do repositório
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      # 2. Instala Python e dependências
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências
+        run: pip install requests
+
+      # 3. Roda o script de atualização
+      - name: Buscar produtos no Mercado Livre
+        run: python atualizar_ml.py
+
+      # 4. Commita e sobe o index.html atualizado
+      - name: Commitar HTML atualizado
+        run: |
+          git config --local user.email "bot@achadospetsbr.com"
+          git config --local user.name "Achados Bot"
+          git add index.html
+          git diff --staged --quiet || git commit -m "🐾 Produtos atualizados automaticamente [$(date '+%d/%m/%Y %H:%M')]"
+          git push
+
+      # 5. (Opcional) Notifica no Telegram que o site foi atualizado
+      # Descomente abaixo e adicione TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID
+      # nos Secrets do GitHub (Settings > Secrets > Actions)
+      #
+      # - name: Notificar no Telegram
+      #   run: |
+      #     curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+      #       -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+      #       -d text="✅ Site @achadospetsbr atualizado com novos produtos do ML!"
